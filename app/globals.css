@@ -6,8 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-inter: var(--font-inter);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -119,4 +118,69 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Keyframes para animação de morphing do strokeDasharray */
+@keyframes morphToSolid {
+  0% {
+    stroke-dasharray: 4;
+    stroke-dashoffset: 0;
+  }
+  25% {
+    stroke-dasharray: 4;
+    stroke-dashoffset: -2;
+  }
+  50% {
+    stroke-dasharray: 8 2;
+    stroke-dashoffset: -4;
+  }
+  75% {
+    stroke-dasharray: 10 0;
+    stroke-dashoffset: -6;
+  }
+  100% {
+    stroke-dasharray: 10 0;
+    stroke-dashoffset: -8;
+  }
+}
+
+@keyframes morphToDotted {
+  0% {
+    stroke-dasharray: 10 0;
+    stroke-dashoffset: -8;
+  }
+  25% {
+    stroke-dasharray: 8 2;
+    stroke-dashoffset: -6;
+  }
+  50% {
+    stroke-dasharray: 6 4;
+    stroke-dashoffset: -4;
+  }
+  75% {
+    stroke-dasharray: 4;
+    stroke-dashoffset: -2;
+  }
+  100% {
+    stroke-dasharray: 4;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Classes para aplicar as animações */
+.stroke-morph-solid {
+  animation: morphToSolid 0.1s ease-in-out forwards;
+}
+
+.stroke-morph-dotted {
+  animation: morphToDotted 0.4s ease-in-out forwards;
+}
+
+/* Hover state para o grupo do retângulo */
+.group\/rect:hover .stroke-morph-hover {
+  animation: morphToSolid 0.2s ease-in-out forwards;
+}
+
+.group\/rect:not(:hover) .stroke-morph-hover {
+  animation: morphToDotted 0.2s ease-in-out forwards;
 }
