@@ -1,9 +1,8 @@
 "use client";
 
 import { JSX, useState } from "react";
-import Image from "next/image";
-
-import Test from "@/app/1080.jpg";
+import Test from "@/app/2k.jpg";
+import { motion } from "motion/react";
 
 export function Rectangle(): JSX.Element {
   const [isHovering, setIsHovering] = useState(false);
@@ -71,13 +70,13 @@ export function Rectangle(): JSX.Element {
       className="group/rect"
     >
       <g
-        className="font-mono text-muted-foreground"
+        className="font-mono text-muted-foreground hover:text-foreground"
         transform="translate(0 -2)"
       >
         {xText.map((i) => (
           <text
             key={`x-${i.x}`}
-            className="sans"
+            className="font-sans hover:text-primary select-none"
             fill="currentColor"
             textAnchor="middle"
             fontSize="3.5"
@@ -95,7 +94,7 @@ export function Rectangle(): JSX.Element {
         {yText.map((i) => (
           <text
             key={`y-${i.y}`}
-            className="sans"
+            className="font-sans hover:text-foreground pointer-events-none"
             fill="currentColor"
             textAnchor="end"
             fontSize="3.5"
@@ -105,9 +104,9 @@ export function Rectangle(): JSX.Element {
           </text>
         ))}
       </g>
-      <defs>
+      {/* <defs>
         <pattern id=":r0:" patternUnits="userSpaceOnUse" width="10" height="10">
-          {/* <motion.path
+          <motion.path
             d="M 0 10 h 10 v -10"
             className="stroke-foreground/60 group-hover/rect:stroke-violet-400 stroke-morph-hover"
             fill="none"
@@ -121,13 +120,14 @@ export function Rectangle(): JSX.Element {
                 ease: "easeInOut",
               },
             }}
-          /> */}
-          <Image src={Test} alt="aa" width={10} height={10} unoptimized />
+          />
         </pattern>
-      </defs>
+      </defs> */}
+
       {/* <rect width="100" height="100" fill="url(#:r0:)" /> */}
+      <image href={Test.src} x="0" y="0" width="100" height="75" />
       <path
-        className="stroke-foreground/60"
+        className="stroke-muted-foreground"
         d="M 0 100 v -100 h 100"
         fill="none"
         strokeDasharray="4"
