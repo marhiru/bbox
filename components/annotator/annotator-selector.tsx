@@ -1,6 +1,12 @@
-import React from 'react';
+import { JSX, useEffect, useRef } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
+import {
+  useAnnotator,
+  type Rectangle,
+  type SelectionData,
+  type SelectCallback
+} from './annotator-context';
 
 const annotatorSelectorVariants = cva(
   'absolute border-dotted',
@@ -19,7 +25,6 @@ const annotatorSelectorVariants = cva(
         warning: 'border-yellow-500',
       },
     },
-    // Variants padrão
     defaultVariants: {
       borderWidth: 2,
       variant: 'default',
@@ -27,20 +32,67 @@ const annotatorSelectorVariants = cva(
   }
 );
 
-// Extrair tipos dos variants
-type annotatorSelectorVariants = VariantProps<typeof annotatorSelectorVariants>;
+type AnnotatorSelectorVariants = VariantProps<typeof annotatorSelectorVariants>;
 
-interface IAnnotatorSelectorProps extends annotatorSelectorVariants {
-  rectangle: { left: number; top: number; width: number; height: number };
-  borderWidth?: 1 | 2 | 3 | 4;
-  variant?: 'default' | 'selected' | 'error' | 'warning';
+export interface AnnotatorSelectorProps extends AnnotatorSelectorVariants {
+  readonly rectangle: Rectangle;
+  readonly borderWidth?: 1 | 2 | 3 | 4;
+  readonly variant?: 'default' | 'selected' | 'error' | 'warning';
+  readonly onSelect?: SelectCallback;
+  readonly onSelectEnd?: SelectCallback;
+  readonly isSelecting?: boolean;
 }
 
-function AnnotatorSelector ({ 
+export function AnnotatorSelector({ 
   rectangle, 
   borderWidth = 2, 
-  variant = 'default' 
-}: IAnnotatorSelectorProps)  {
+  variant = 'default',
+  onSelect,
+  onSelectEnd,
+  isSelecting = false
+}: AnnotatorSelectorProps): JSX.Element {
+  const { addSelection, updateSelection, totalSelections } = useAnnotator();
+  const hasTriggeredSelect = useRef(false);
+  const hasTriggeredSelectEnd = useRef(false);
+  
+  useEffect(() => {
+    if (isSelecting && !hasTriggeredSelect.current) {
+      hasTriggeredSelect.current = true;
+      hasTriggeredSelectEnd.current = false;
+      
+      const selectionId = `selection-${totalSelections + 1}`;
+      const data: SelectionData = { 
+        id: selectionId,
+        rectangle, 
+        timestamp: Date.now(), 
+        status: 'started'
+      };
+      addSelection(data);
+      onSelect?.(data);
+    }
+  }, [isSelecting, totalSelections, addSelection, onSelect, rectangle]);
+
+  useEffect(() => {
+    if (!isSelecting && !hasTriggeredSelectEnd.current) {
+      hasTriggeredSelectEnd.current = true;
+      hasTriggeredSelect.current = false;
+      
+      const currentSelection = `selection-${totalSelections}`;
+      updateSelection(currentSelection, { 
+        status: 'ended',
+        timestamp: Date.now()
+      });
+      
+      const data: SelectionData = { 
+        id: currentSelection,
+        rectangle, 
+        timestamp: Date.now(), 
+        status: 'ended'
+      };
+      onSelectEnd?.(data);
+    }
+  }, [isSelecting, totalSelections, updateSelection, onSelectEnd, rectangle]);
+
   return (
     <div
       className={cn(
@@ -55,6 +107,6 @@ function AnnotatorSelector ({
       }}
     />
   );
-};
+}
 
 export default AnnotatorSelector;
