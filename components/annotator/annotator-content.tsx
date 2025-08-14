@@ -188,12 +188,12 @@ function AnnotatorContent({
           <AnnotatorSelector
             rectangle={rect}
             isSelecting={status === "hold"}
-            onSelect={(data) => {
-              console.log("Seleção iniciada:", data.id, data);
-            }}
-            onSelectEnd={(data) => {
-              console.log("Seleção finalizada:", data.id, data);
-            }}
+            // onSelect={(data) => {
+            //   console.log("Seleção iniciada:", data.id, data);
+            // }}
+            // onSelectEnd={(data) => {
+            //   console.log("Seleção finalizada:", data.id, data);
+            // }}
           />
         )}
 
