@@ -1,10 +1,10 @@
 import { useState, useCallback, useMemo } from 'react';
-import { EntryWithMeta, updateEntryHoverState } from '../annotator.helpers';
+import { EntryType, EntryWithMeta, updateEntryHoverState } from '../annotator.helpers';
 import { createNewEntry, processEntriesForChange } from '../annotator.helpers';
 import { Rectangle } from '../annotator-context';
 import { useAnnotator } from '../annotator-context';
 
-export function useEntriesManager(multiplier: number, onChange: (entries: any[]) => void) {
+export function useEntriesManager(multiplier: number, onChange: (entries: EntryType[]) => void) {
   const [entries, setEntries] = useState<EntryWithMeta[]>([]);
   const { maxSelections } = useAnnotator();
 
