@@ -1,10 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { EntryWithMeta, updateEntryHoverState } from '../annotator.helpers';
 import { createNewEntry, processEntriesForChange } from '../annotator.helpers';
 import { Rectangle } from '../annotator-context';
+import { useAnnotator } from '../annotator-context';
 
 export function useEntriesManager(multiplier: number, onChange: (entries: any[]) => void) {
   const [entries, setEntries] = useState<EntryWithMeta[]>([]);
+  const { maxSelections } = useAnnotator();
+
+  const totalSelections = useMemo(() => entries.length, [entries]);
+
+  const canAddSelection = useMemo(() => {
+    if (maxSelections === undefined) return true;
+    return totalSelections < maxSelections;
+  }, [totalSelections, maxSelections]);
 
   const handleEntriesChange = useCallback(
     (newEntries: EntryWithMeta[]) => {
@@ -18,13 +27,18 @@ export function useEntriesManager(multiplier: number, onChange: (entries: any[])
     (entryRect: Rectangle, entryLabel: string) => {
       if (!entryRect) return;
 
+      if (!canAddSelection) {
+        console.warn(`Limite de seleções atingido (${totalSelections}/${maxSelections})`);
+        return null;
+      }
+
       const newEntry = createNewEntry(entryRect, entryLabel);
       const newEntries = [...entries, newEntry];
       setEntries(newEntries);
       handleEntriesChange(newEntries);
       return newEntries;
     },
-    [entries, handleEntriesChange]
+    [entries, handleEntriesChange, canAddSelection, totalSelections, maxSelections]
   );
 
   const removeEntry = useCallback(
@@ -47,6 +61,9 @@ export function useEntriesManager(multiplier: number, onChange: (entries: any[])
 
   return {
     entries,
+    totalSelections, // Adicionado: total de seleções atuais
+    canAddSelection, // Adicionado: se pode adicionar mais seleções
+    maxSelections,  // Adicionado: limite máximo de seleções
     updateEntryHover,
     createAndAddEntry,
     removeEntry,

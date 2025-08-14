@@ -12,7 +12,7 @@ export function useImageLoader(url: string) {
     height?: number;
     backgroundImageSrc?: string;
   }>({});
-  
+
   const annotatorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export function useImageLoader(url: string) {
       imageElement.src = url;
 
       imageElement.onload = function () {
-        const { multiplier: newMultiplier, displayWidth, displayHeight } = 
+        const { multiplier: newMultiplier, displayWidth, displayHeight } =
           calculateImageDimensions(imageElement.width, imageElement.height, maxWidth);
 
         setMultiplier(newMultiplier);
@@ -45,7 +45,7 @@ export function useImageLoader(url: string) {
     };
 
     loadImage();
-    
+
     const resizeObserver = new ResizeObserver(loadImage);
     if (annotatorRef.current) {
       resizeObserver.observe(annotatorRef.current);
