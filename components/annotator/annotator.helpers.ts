@@ -74,13 +74,23 @@ export const calculateImageDimensions = (
   imageHeight: number,
   maxWidth: number
 ) => {
-  const multiplier = imageWidth / maxWidth;
-  
-  return {
-    multiplier,
-    displayWidth: imageWidth / multiplier,
-    displayHeight: imageHeight / multiplier,
-  };
+  // If image is wider than container, scale it down
+  // If image is smaller than container, keep original size
+  if (imageWidth > maxWidth) {
+    const multiplier = imageWidth / maxWidth;
+    return {
+      multiplier,
+      displayWidth: maxWidth,
+      displayHeight: imageHeight / multiplier,
+    };
+  } else {
+    // Image fits in container, keep original size
+    return {
+      multiplier: 1,
+      displayWidth: imageWidth,
+      displayHeight: imageHeight,
+    };
+  }
 };
 
 // Função para processar entradas para onChange
