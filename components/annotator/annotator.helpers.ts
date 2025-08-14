@@ -134,7 +134,7 @@ export const validateInitialStatus = (
 };
 
 export const ANNOTATOR_CONSTANTS = {
-  DEFAULT_BORDER_WIDTH: 2,
+  DEFAULT_BORDER_WIDTH: 1,
   DEFAULT_STATUS: "free" as const,
   MOUSE_BUTTON_RIGHT: 2,
 } as const;
