@@ -1,6 +1,9 @@
-import React, { forwardRef, JSX } from "react";
+import React, { JSX } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { ANNOTATOR_CONSTANTS, type EntryType, type AnnotatorStatus } from "./annotator.helpers";
+import {
+  ANNOTATOR_CONSTANTS,
+  type EntryType
+} from "./annotator.helpers";
 import { AnnotatorProvider } from "./annotator-context";
 import AnnotatorContent from "./annotator-content";
 
@@ -40,23 +43,21 @@ export interface AnnotatorRef {
   reset: () => void;
 }
 
-function AnnotatorWithRef(
-  {
-    url,
-    borderWidth = ANNOTATOR_CONSTANTS.DEFAULT_BORDER_WIDTH,
-    inputMethod,
-    labels,
-    onChange,
-    status: initialStatus,
-    className,
-    ...props
-  }: AnnotatorProps,
-  // ref: React.ComponentPropsWithRef<>
-): JSX.Element {
+function Annotator({
+  url,
+  borderWidth = ANNOTATOR_CONSTANTS.DEFAULT_BORDER_WIDTH,
+  inputMethod,
+  labels,
+  onChange,
+  status: initialStatus,
+  className,
+  ref,
+  ...props
+}: AnnotatorProps): JSX.Element {
   return (
     <AnnotatorProvider>
       <AnnotatorContent
-        // ref={ref}
+        ref={ref}
         url={url}
         borderWidth={borderWidth}
         inputMethod={inputMethod}
@@ -69,8 +70,6 @@ function AnnotatorWithRef(
     </AnnotatorProvider>
   );
 }
-
-const Annotator = forwardRef<AnnotatorRef, AnnotatorProps>(AnnotatorWithRef);
 
 Annotator.displayName = "Annotator";
 
