@@ -1,4 +1,4 @@
-import { JSX, useEffect, useRef } from 'react';
+import { JSX, RefObject, useEffect, useRef } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import {
@@ -52,13 +52,13 @@ export function AnnotatorSelector({
   isSelecting = false
 }: AnnotatorSelectorProps): JSX.Element {
   const { addSelection, updateSelection, totalSelections } = useAnnotator();
-  const hasTriggeredSelect = useRef(false);
-  const hasTriggeredSelectEnd = useRef(false);
+  const selectTrigger: RefObject<boolean> = useRef(false);
+  const selectTriggerEnd: RefObject<boolean> = useRef(false);
   
   useEffect(() => {
-    if (isSelecting && !hasTriggeredSelect.current) {
-      hasTriggeredSelect.current = true;
-      hasTriggeredSelectEnd.current = false;
+    if (isSelecting && !selectTrigger.current) {
+      selectTrigger.current = true;
+      selectTriggerEnd.current = false;
       
       const selectionId = `selection-${totalSelections + 1}`;
       const data: SelectionData = { 
@@ -73,9 +73,9 @@ export function AnnotatorSelector({
   }, [isSelecting, totalSelections, addSelection, onSelect, rectangle]);
 
   useEffect(() => {
-    if (!isSelecting && !hasTriggeredSelectEnd.current) {
-      hasTriggeredSelectEnd.current = true;
-      hasTriggeredSelect.current = false;
+    if (!isSelecting && !selectTriggerEnd.current) {
+      selectTriggerEnd.current = true;
+      selectTrigger.current = false;
       
       const currentSelection = `selection-${totalSelections}`;
       updateSelection(currentSelection, { 
