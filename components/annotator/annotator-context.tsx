@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 
 export interface Rectangle {
   readonly left: number;
@@ -7,7 +14,7 @@ export interface Rectangle {
   readonly height: number;
 }
 
-export type SelectionStatus = 'started' | 'ended';
+export type SelectionStatus = "started" | "ended";
 
 export interface SelectionData {
   readonly id: string;
@@ -26,42 +33,64 @@ export interface AnnotatorContextType {
   readonly selections: readonly SelectionData[];
   readonly setIsSelecting: (selecting: boolean) => void;
   readonly addSelection: (selection: SelectionData) => void;
-  readonly updateSelection: (id: string, updates: Partial<SelectionData>) => void;
+  readonly updateSelection: (
+    id: string,
+    updates: Partial<SelectionData>
+  ) => void;
   readonly setActiveSelection: (count: number) => void;
+  readonly maxSelections?: number;
+  readonly canAddSelection: boolean;
 }
 
-const AnnotatorContext = createContext<AnnotatorContextType | undefined>(undefined);
+const AnnotatorContext = createContext<AnnotatorContextType | undefined>(
+  undefined
+);
 
-export function AnnotatorProvider({ children }: { children: React.ReactNode }) {
+export function AnnotatorProvider({
+  children,
+  maxSelections,
+}: {
+  children: React.ReactNode;
+  maxSelections?: number;
+}) {
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
   const [activeSelection, setActiveSelection] = useState<number>(0);
   const [totalSelections, setTotalSelections] = useState<number>(0);
   const [selections, setSelections] = useState<SelectionData[]>([]);
 
   useEffect(() => {
-    localStorage.setItem('annotator-selecting', JSON.stringify(isSelecting));
+    localStorage.setItem("annotator-selecting", JSON.stringify(isSelecting));
   }, [isSelecting]);
 
   useEffect(() => {
-    localStorage.setItem('annotator-data', JSON.stringify({
-      activeSelection,
-      totalSelections,
-      selections
-    }));
+    localStorage.setItem(
+      "annotator-data",
+      JSON.stringify({
+        activeSelection,
+        totalSelections,
+        selections,
+      })
+    );
   }, [activeSelection, totalSelections, selections]);
 
   const addSelection = useCallback((selection: SelectionData): void => {
-    setSelections(prev => [...prev, selection]);
-    setTotalSelections(prev => prev + 1);
+    setSelections((prev) => [...prev, selection]);
+    setTotalSelections((prev) => prev + 1);
   }, []);
 
-  const updateSelection = useCallback((id: string, updates: Partial<SelectionData>): void => {
-    setSelections(prev => 
-      prev.map(sel => 
-        sel.id === id ? { ...sel, ...updates } : sel
-      )
-    );
-  }, []);
+  const updateSelection = useCallback(
+    (id: string, updates: Partial<SelectionData>): void => {
+      setSelections((prev) =>
+        prev.map((sel) => (sel.id === id ? { ...sel, ...updates } : sel))
+      );
+    },
+    []
+  );
+
+  const canAddSelection = useMemo(() => {
+    if (maxSelections === undefined) return true;
+    return activeSelection < maxSelections;
+  }, [totalSelections, maxSelections]);
 
   const contextValue: AnnotatorContextType = {
     isSelecting,
@@ -71,7 +100,9 @@ export function AnnotatorProvider({ children }: { children: React.ReactNode }) {
     setIsSelecting,
     addSelection,
     updateSelection,
-    setActiveSelection
+    setActiveSelection,
+    maxSelections,
+    canAddSelection,
   };
 
   return (
@@ -84,7 +115,7 @@ export function AnnotatorProvider({ children }: { children: React.ReactNode }) {
 export function useAnnotator(): AnnotatorContextType {
   const context = useContext(AnnotatorContext);
   if (!context) {
-    throw new Error('useAnnotator must be used within AnnotatorProvider');
+    throw new Error("useAnnotator must be used within AnnotatorProvider");
   }
   return context;
 }

@@ -1,9 +1,6 @@
 import React, { JSX } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import {
-  ANNOTATOR_CONSTANTS,
-  type EntryType
-} from "./annotator.helpers";
+import { ANNOTATOR_CONSTANTS, type EntryType } from "./annotator.helpers";
 import { AnnotatorProvider } from "./annotator-context";
 import AnnotatorContent from "./annotator-content";
 
@@ -37,6 +34,7 @@ export interface AnnotatorProps
   labels?: string | string[];
   onChange: (entries: EntryType[]) => void;
   borderWidth?: 1 | 2 | 3 | 4;
+  maxSelections?: number;
 }
 
 export interface AnnotatorRef {
@@ -50,12 +48,13 @@ function Annotator({
   labels,
   onChange,
   status: initialStatus,
+  maxSelections,
   className,
   ref,
   ...props
 }: AnnotatorProps): JSX.Element {
   return (
-    <AnnotatorProvider>
+    <AnnotatorProvider maxSelections={maxSelections}>
       <AnnotatorContent
         ref={ref}
         url={url}
@@ -64,6 +63,7 @@ function Annotator({
         labels={labels}
         onChange={onChange}
         status={initialStatus || "free"}
+        maxSelections={maxSelections}
         className={className}
         {...props}
       />
