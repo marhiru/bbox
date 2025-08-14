@@ -87,7 +87,7 @@ export function AnnotatorEntries({
             </div>
           )}
 
-          <div className="absolute text-primary -top-8 whitespace-nowrap">
+          <div className="absolute z-50 text-primary -top-8 whitespace-nowrap">
             {entry.label}
           </div>
         </div>
