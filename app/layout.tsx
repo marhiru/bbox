@@ -28,7 +28,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Navigation />
+          <Navigation text="Test our annotations component" announce />
           {children}
         </ThemeProvider>
       </body>
