@@ -1,103 +1,97 @@
-import { JSX, useEffect, useRef } from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import { JSX, RefObject, useEffect, useMemo, useRef } from "react";
+import { cva } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+import { useAnnotator, type SelectionData } from "./annotator-context";
 import {
-  useAnnotator,
-  type Rectangle,
-  type SelectionData,
-  type SelectCallback
-} from './annotator-context';
+  AnnotatorSelectorProps,
+  AnnotatorSelectorVariants,
+} from "./annotator.types";
 
-const annotatorSelectorVariants = cva(
-  'absolute border-dotted',
-  {
-    variants: {
-      borderWidth: {
-        1: 'border',
-        2: 'border-2',
-        3: 'border-3',
-        4: 'border-4',
-      },
-      variant: {
-        default: 'border-green-400',
-        selected: 'border-blue-500',
-        error: 'border-red-500',
-        warning: 'border-yellow-500',
-      },
+export const annotatorSelectorVariants = cva("absolute border-dotted", {
+  variants: {
+    borderWidth: {
+      1: "border",
+      2: "border-2",
+      3: "border-3",
+      4: "border-4",
     },
-    defaultVariants: {
-      borderWidth: 2,
-      variant: 'default',
+    variant: {
+      default: "border-green-400",
+      selected: "border-blue-500",
+      error: "border-red-500",
+      warning: "border-yellow-500",
     },
-  }
-);
+  },
+  defaultVariants: {
+    borderWidth: 2,
+    variant: "default",
+  },
+});
 
-type AnnotatorSelectorVariants = VariantProps<typeof annotatorSelectorVariants>;
-
-export interface AnnotatorSelectorProps extends AnnotatorSelectorVariants {
-  readonly rectangle: Rectangle;
-  readonly borderWidth?: 1 | 2 | 3 | 4;
-  readonly variant?: 'default' | 'selected' | 'error' | 'warning';
-  readonly onSelect?: SelectCallback;
-  readonly onSelectEnd?: SelectCallback;
-  readonly isSelecting?: boolean;
-}
-
-export function AnnotatorSelector({ 
-  rectangle, 
-  borderWidth = 2, 
-  variant = 'default',
+export function AnnotatorSelector({
+  rectangle,
+  borderWidth = 2,
+  variant = "default",
   onSelect,
   onSelectEnd,
-  isSelecting = false
-}: AnnotatorSelectorProps): JSX.Element {
-  const { addSelection, updateSelection, totalSelections } = useAnnotator();
-  const hasTriggeredSelect = useRef(false);
-  const hasTriggeredSelectEnd = useRef(false);
-  
+  isSelecting = false,
+}: AnnotatorSelectorProps & AnnotatorSelectorVariants): JSX.Element {
+  const { addSelection, updateSelection, totalSelections, canAddSelection, maxSelections } = useAnnotator();
+  const selectTrigger: RefObject<boolean> = useRef(false);
+  const selectTriggerEnd: RefObject<boolean> = useRef(false);
+
   useEffect(() => {
-    if (isSelecting && !hasTriggeredSelect.current) {
-      hasTriggeredSelect.current = true;
-      hasTriggeredSelectEnd.current = false;
-      
+    if (isSelecting && !selectTrigger.current) {
+      if (!canAddSelection) return;
+
+      selectTrigger.current = true;
+      selectTriggerEnd.current = false;
+
       const selectionId = `selection-${totalSelections + 1}`;
-      const data: SelectionData = { 
+      const data: SelectionData = {
         id: selectionId,
-        rectangle, 
-        timestamp: Date.now(), 
-        status: 'started'
+        rectangle,
+        timestamp: Date.now(),
+        status: "started",
       };
       addSelection(data);
       onSelect?.(data);
     }
-  }, [isSelecting, totalSelections, addSelection, onSelect, rectangle]);
+  }, [isSelecting, totalSelections, addSelection, onSelect, rectangle, canAddSelection]);
 
   useEffect(() => {
-    if (!isSelecting && !hasTriggeredSelectEnd.current) {
-      hasTriggeredSelectEnd.current = true;
-      hasTriggeredSelect.current = false;
-      
+    if (!isSelecting && !selectTriggerEnd.current) {
+      selectTriggerEnd.current = true;
+      selectTrigger.current = false;
+
       const currentSelection = `selection-${totalSelections}`;
-      updateSelection(currentSelection, { 
-        status: 'ended',
-        timestamp: Date.now()
+      updateSelection(currentSelection, {
+        status: "ended",
+        timestamp: Date.now(),
       });
-      
-      const data: SelectionData = { 
+
+      const data: SelectionData = {
         id: currentSelection,
-        rectangle, 
-        timestamp: Date.now(), 
-        status: 'ended'
+        rectangle,
+        timestamp: Date.now(),
+        status: "ended",
       };
       onSelectEnd?.(data);
     }
   }, [isSelecting, totalSelections, updateSelection, onSelectEnd, rectangle]);
 
+  const selectorVariant = useMemo(() => {
+    if (maxSelections && !canAddSelection) {
+      return "warning";
+    }
+    return variant;
+  }, [variant, maxSelections, canAddSelection]);
+
   return (
     <div
       className={cn(
-        annotatorSelectorVariants({ borderWidth, variant }),
-        'pointer-events-none'
+        annotatorSelectorVariants({ borderWidth, variant: selectorVariant }),
+        "pointer-events-none"
       )}
       style={{
         left: `${rectangle.left - borderWidth}px`,

@@ -1,10 +1,13 @@
 import { cva } from "class-variance-authority";
 import {
   AnnotatorStatus,
-  EntryWithMeta,
   ANNOTATOR_CONSTANTS,
+  cropCoordinates,
+  calculateRectangle,
+  validateInitialStatus,
+  type Pointer,
+  type Offset,
 } from "./annotator.helpers";
-import { useAnnotator } from "./annotator-context";
 import React, {
   useEffect,
   useRef,
@@ -18,19 +21,12 @@ import { cn } from "@/lib/utils";
 import { AnnotatorProps, AnnotatorRef, annotatorVariants } from "./annotator";
 import AnnotatorSelector from "./annotator-selector";
 import AnnotatorLabel from "./annotator-label";
-import {
-  calculateRectangle,
-  cropCoordinates,
-  calculateImageDimensions,
-  processEntriesForChange,
-  createNewEntry,
-  updateEntryHoverState,
-  removeEntryById,
-  validateInitialStatus,
-  type EntryType,
-  type Pointer,
-  type Offset,
-} from "./annotator.helpers";
+import { useImageLoader } from "./_hooks/use-image-loader";
+import { useMouseEvents } from "./_hooks/use-mouse-events";
+import { useEntriesManager } from "./_hooks/use-entries-manager";
+import { AnnotatorEntries } from "./annotator-entries";
+import { useAnnotator } from "./annotator-context";
+import { useMaskGenerator } from "./_hooks/use-mask-generator";
 
 const imageFrameVariants = cva("relative bg-cover bg-center bg-no-repeat", {
   variants: {
@@ -45,44 +41,35 @@ const imageFrameVariants = cva("relative bg-cover bg-center bg-no-repeat", {
   },
 });
 
-const entryVariants = cva(
-  "absolute font-mono text-sm text-red-500 border-red-500",
-  {
-    variants: {
-      borderWidth: {
-        1: "border",
-        2: "border-2",
-        3: "border-3",
-        4: "border-4",
-      },
-      showCloseButton: {
-        true: "",
-        false: "",
-      },
-    },
-    defaultVariants: {
-      borderWidth: 2,
-      showCloseButton: false,
-    },
-  }
-);
+// Função para gerar máscara SVG baseada nas entradas
+const generateMaskSVG = (
+  entries: any[],
+  width: number,
+  height: number
+): string => {
+  if (!entries.length) return "";
 
-const closeButtonVariants = cva(
-  "absolute -top-2 -right-2 w-4 h-4 p-4 pt-4 overflow-hidden text-white bg-green-800 border-2 border-white rounded-full cursor-pointer select-none text-center",
-  {
-    variants: {
-      borderWidth: {
-        1: "border",
-        2: "border-2",
-        3: "border-3",
-        4: "border-4",
-      },
-    },
-    defaultVariants: {
-      borderWidth: 2,
-    },
-  }
-);
+  // Criar retângulos para cada entrada
+  const rects = entries
+    .map((entry) => {
+      const { left, top, width: w, height: h } = entry;
+      return `<rect x="${left}" y="${top}" width="${w}" height="${h}" fill="white"/>`;
+    })
+    .join("");
+
+  // SVG com fundo preto (área escurecida) e retângulos brancos (áreas de brilho original)
+  return `data:image/svg+xml;base64,${btoa(`
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <mask id="brightness-mask">
+          <rect width="100%" height="100%" fill="black"/>
+          ${rects}
+        </mask>
+      </defs>
+      <rect width="100%" height="100%" fill="white" mask="url(#brightness-mask)"/>
+    </svg>
+  `)}`;
+};
 
 function AnnotatorContent({
   url,
@@ -91,41 +78,33 @@ function AnnotatorContent({
   labels,
   onChange,
   status: initialStatus,
+  maxSelections,
   className,
   ref,
   ...props
 }: AnnotatorProps): JSX.Element {
   const [pointer, setPointer] = useState<Pointer>(null);
   const [offset, setOffset] = useState<Offset>(null);
-  const [entries, setEntries] = useState<EntryWithMeta[]>([]);
-  const [multiplier, setMultiplier] = useState(1);
   const [status, setStatus] = useState<AnnotatorStatus>(
     validateInitialStatus(initialStatus)
   );
-  const [annotatorStyle, setAnnotatorStyle] = useState<{
-    width?: number;
-    height?: number;
-  }>({});
-  const [imageFrameStyle, setImageFrameStyle] = useState<{
-    width?: number;
-    height?: number;
-    backgroundImageSrc?: string;
-  }>({});
 
-  // Separate DOM ref from custom ref
-  const annotatorRef = useRef<HTMLDivElement>(null);
   const labelInputRef = useRef<HTMLInputElement | HTMLSelectElement>(null);
 
-  const { setActiveSelection } = useAnnotator();
+  const { multiplier, annotatorStyle, imageFrameStyle, annotatorRef } =
+    useImageLoader(url);
 
-  // Move all handlers from Annotator
-  const handleEntriesChange = useCallback(
-    (newEntries: EntryWithMeta[]) => {
-      const processedEntries = processEntriesForChange(newEntries, multiplier);
-      onChange(processedEntries);
-    },
-    [multiplier, onChange]
-  );
+  const {
+    entries,
+    totalSelections,
+    canAddSelection,
+    createAndAddEntry,
+    removeEntry,
+    resetEntries,
+    updateEntryHover,
+    setEntries,
+  } = useEntriesManager(multiplier, onChange);
+  const { setActiveSelection } = useAnnotator();
 
   const crop = useCallback(
     (pageX: number, pageY: number) => {
@@ -146,23 +125,21 @@ function AnnotatorContent({
     },
     [crop]
   );
-
   const addEntry = useCallback(
     (label: string) => {
       const rect = calculateRectangle(offset, pointer);
-      const newEntry = createNewEntry(rect, label);
-      const newEntries = [...entries, newEntry];
-      setEntries(newEntries);
-      handleEntriesChange(newEntries);
+      createAndAddEntry(rect, label || "none");
       setStatus("free");
       setPointer(null);
       setOffset(null);
     },
-    [offset, pointer, entries, handleEntriesChange]
+    [offset, pointer, createAndAddEntry]
   );
 
   const mouseDownHandler = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!canAddSelection) return;
+
       if (
         (status === "free" || status === "input") &&
         e.button !== ANNOTATOR_CONSTANTS.MOUSE_BUTTON_RIGHT
@@ -173,123 +150,53 @@ function AnnotatorContent({
         setStatus("hold");
       }
     },
-    [status, crop]
+    [status, crop, canAddSelection]
   );
 
-  const removeEntry = useCallback(
-    (id: string) => {
-      const newEntries = removeEntryById(entries, id);
-      setEntries(newEntries);
-      handleEntriesChange(newEntries);
+  const onMouseUp = useCallback(
+    (e: MouseEvent) => {
+      if (status === "hold") {
+        updateRectangle(e.pageX, e.pageY);
+
+        if (inputMethod === "none") {
+          const rect = calculateRectangle(offset, pointer);
+          createAndAddEntry(rect, "none");
+          setStatus("free");
+          setPointer(null);
+          setOffset(null);
+        } else {
+          setStatus("input");
+          labelInputRef.current?.focus();
+        }
+      }
     },
-    [entries, handleEntriesChange]
+    [status, updateRectangle, inputMethod, offset, pointer, createAndAddEntry]
   );
 
-  const updateEntryHover = useCallback((id: string, show: boolean) => {
-    setEntries((prev) => updateEntryHoverState(prev, id, show));
-  }, []);
+  useMouseEvents({ status, updateRectangle, onMouseUp });
 
-  // Use useImperativeHandle for custom ref methods
   useImperativeHandle(
     ref as React.Ref<AnnotatorRef>,
     () => ({
       reset: () => {
         setEntries([]);
-        handleEntriesChange([]);
+        resetEntries();
       },
     }),
-    [handleEntriesChange]
+    [setEntries, resetEntries]
   );
 
   useEffect(() => {
     setActiveSelection(entries.length);
   }, [entries.length, setActiveSelection]);
 
-  useEffect(() => {
-    const getMaxWidth = () => {
-      const containerWidth = annotatorRef.current?.offsetWidth;
-      const result =
-        containerWidth && containerWidth > 200 ? containerWidth : 800;
-      return result;
-    };
+  const rect = useMemo(
+    () => calculateRectangle(offset, pointer),
+    [offset, pointer]
+  );
 
-    const loadImage = () => {
-      const maxWidth = getMaxWidth();
-      const imageElement = new Image();
-
-      imageElement.src = url;
-
-      imageElement.onload = function () {
-        const {
-          multiplier: newMultiplier,
-          displayWidth,
-          displayHeight,
-        } = calculateImageDimensions(
-          imageElement.width,
-          imageElement.height,
-          maxWidth
-        );
-
-        setMultiplier(newMultiplier);
-        setAnnotatorStyle({
-          width: displayWidth,
-          height: displayHeight,
-        });
-        setImageFrameStyle({
-          backgroundImageSrc: imageElement.src,
-          width: displayWidth,
-          height: displayHeight,
-        });
-      };
-
-      imageElement.onerror = function () {
-        throw new Error(`Invalid image URL: ${url}`);
-      };
-    };
-
-    loadImage();
-
-    const resizeObserver = new ResizeObserver(() => {
-      loadImage();
-    });
-
-    if (annotatorRef.current) {
-      resizeObserver.observe(annotatorRef.current);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [url]);
-
-  useEffect(() => {
-    const mouseMoveHandler = (e: MouseEvent) => {
-      if (status === "hold") {
-        updateRectangle(e.pageX, e.pageY);
-      }
-    };
-
-    window.addEventListener("mousemove", mouseMoveHandler);
-    return () => window.removeEventListener("mousemove", mouseMoveHandler);
-  }, [status, updateRectangle]);
-
-  useEffect(() => {
-    const mouseUpHandler = (e: MouseEvent) => {
-      if (status === "hold") {
-        updateRectangle(e.pageX, e.pageY);
-        setStatus("input");
-        labelInputRef.current?.focus();
-      }
-    };
-
-    window.addEventListener("mouseup", mouseUpHandler);
-    return () => window.removeEventListener("mouseup", mouseUpHandler);
-  }, [status, updateRectangle]);
-
-  // Calculate rect
-  const rect = useMemo(() => {
-    return calculateRectangle(offset, pointer);
-  }, [offset, pointer]);
+  // Gerar máscara SVG usando as dimensões da imagem e as entradas existentes
+  const maskImage = useMaskGenerator(entries, imageFrameStyle?.width, imageFrameStyle?.height);
 
   return (
     <div
@@ -298,13 +205,13 @@ function AnnotatorContent({
           status,
           borderWidth,
         }),
-        "relative flex items-center justify-center"
+        "flex items-center justify-center"
       )}
       style={{
         width: `${annotatorStyle?.width || 800}px`,
         height: `${annotatorStyle?.height || 600}px`,
       }}
-      ref={annotatorRef} // This is the DOM ref
+      ref={annotatorRef}
       onMouseDown={mouseDownHandler}
       {...props}
     >
@@ -314,19 +221,16 @@ function AnnotatorContent({
           width: `${imageFrameStyle?.width}px`,
           height: `${imageFrameStyle?.height}px`,
           backgroundImage: `url(${imageFrameStyle?.backgroundImageSrc})`,
+          // Aplicar máscara apenas quando há entradas
+          ...(maskImage && {
+            maskImage: maskImage,
+            WebkitMaskImage: maskImage,
+            filter: "brightness(0.3)",
+          }),
         }}
       >
         {(status === "hold" || status === "input") && (
-          <AnnotatorSelector
-            rectangle={rect}
-            isSelecting={status === "hold"}
-            onSelect={(data) => {
-              console.log("Seleção iniciada:", data.id, data);
-            }}
-            onSelectEnd={(data) => {
-              console.log("Seleção finalizada:", data.id, data);
-            }}
-          />
+          <AnnotatorSelector rectangle={rect} isSelecting={status === "hold"} />
         )}
 
         {status === "input" && rect && (
@@ -340,43 +244,19 @@ function AnnotatorContent({
           />
         )}
 
-        {entries.map((entry) => (
-          <div
-            key={entry.id}
-            className={cn(
-              entryVariants({
-                borderWidth,
-                showCloseButton: entry.showCloseButton,
-              })
-            )}
-            style={{
-              top: `${entry.top - borderWidth}px`,
-              left: `${entry.left - borderWidth}px`,
-              width: `${entry.width}px`,
-              height: `${entry.height}px`,
-            }}
-            onMouseOver={() => updateEntryHover(entry.id, true)}
-            onMouseLeave={() => updateEntryHover(entry.id, false)}
-          >
-            {entry.showCloseButton && (
-              <div
-                className={cn(
-                  closeButtonVariants({ borderWidth }),
-                  "flex items-center justify-center -top-4 -right-4"
-                )}
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={() => removeEntry(entry.id)}
-              >
-                <span className="text-xs font-bold leading-none">×</span>
-              </div>
-            )}
-
-            <div className="absolute text-primary -top-8 whitespace-nowrap">
-              {entry.label}
-            </div>
-          </div>
-        ))}
+        <AnnotatorEntries
+          entries={entries}
+          borderWidth={borderWidth}
+          onRemove={removeEntry}
+          onHover={updateEntryHover}
+        />
       </div>
+
+      {maxSelections && !canAddSelection && (
+        <div className="absolute -top-12 left-0 bg-input/80 cursor-auto select-none border text-foreground px-2 py-1 rounded text-sm">
+          Limite de seleções atingido ({totalSelections}/{maxSelections})
+        </div>
+      )}
     </div>
   );
 }

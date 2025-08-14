@@ -1,6 +1,6 @@
-import React, { forwardRef, JSX } from "react";
+import React, { JSX } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { ANNOTATOR_CONSTANTS, type EntryType, type AnnotatorStatus } from "./annotator.helpers";
+import { ANNOTATOR_CONSTANTS, type EntryType } from "./annotator.helpers";
 import { AnnotatorProvider } from "./annotator-context";
 import AnnotatorContent from "./annotator-content";
 
@@ -34,43 +34,42 @@ export interface AnnotatorProps
   labels?: string | string[];
   onChange: (entries: EntryType[]) => void;
   borderWidth?: 1 | 2 | 3 | 4;
+  maxSelections?: number;
 }
 
 export interface AnnotatorRef {
   reset: () => void;
 }
 
-function AnnotatorWithRef(
-  {
-    url,
-    borderWidth = ANNOTATOR_CONSTANTS.DEFAULT_BORDER_WIDTH,
-    inputMethod,
-    labels,
-    onChange,
-    status: initialStatus,
-    className,
-    ...props
-  }: AnnotatorProps,
-  // ref: React.ComponentPropsWithRef<>
-): JSX.Element {
+function Annotator({
+  url,
+  borderWidth = ANNOTATOR_CONSTANTS.DEFAULT_BORDER_WIDTH,
+  inputMethod,
+  labels,
+  onChange,
+  status: initialStatus,
+  maxSelections,
+  className,
+  ref,
+  ...props
+}: AnnotatorProps): JSX.Element {
   return (
-    <AnnotatorProvider>
+    <AnnotatorProvider maxSelections={maxSelections}>
       <AnnotatorContent
-        // ref={ref}
+        ref={ref}
         url={url}
         borderWidth={borderWidth}
         inputMethod={inputMethod}
         labels={labels}
         onChange={onChange}
         status={initialStatus || "free"}
+        maxSelections={maxSelections}
         className={className}
         {...props}
       />
     </AnnotatorProvider>
   );
 }
-
-const Annotator = forwardRef<AnnotatorRef, AnnotatorProps>(AnnotatorWithRef);
 
 Annotator.displayName = "Annotator";
 
