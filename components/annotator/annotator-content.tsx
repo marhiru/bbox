@@ -41,36 +41,6 @@ const imageFrameVariants = cva("relative bg-cover bg-center bg-no-repeat", {
   },
 });
 
-// Função para gerar máscara SVG baseada nas entradas
-const generateMaskSVG = (
-  entries: any[],
-  width: number,
-  height: number
-): string => {
-  if (!entries.length) return "";
-
-  // Criar retângulos para cada entrada
-  const rects = entries
-    .map((entry) => {
-      const { left, top, width: w, height: h } = entry;
-      return `<rect x="${left}" y="${top}" width="${w}" height="${h}" fill="white"/>`;
-    })
-    .join("");
-
-  // SVG com fundo preto (área escurecida) e retângulos brancos (áreas de brilho original)
-  return `data:image/svg+xml;base64,${btoa(`
-    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <mask id="brightness-mask">
-          <rect width="100%" height="100%" fill="black"/>
-          ${rects}
-        </mask>
-      </defs>
-      <rect width="100%" height="100%" fill="white" mask="url(#brightness-mask)"/>
-    </svg>
-  `)}`;
-};
-
 function AnnotatorContent({
   url,
   borderWidth = ANNOTATOR_CONSTANTS.DEFAULT_BORDER_WIDTH,
