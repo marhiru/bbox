@@ -26,6 +26,7 @@ import { useMouseEvents } from "./_hooks/use-mouse-events";
 import { useEntriesManager } from "./_hooks/use-entries-manager";
 import { AnnotatorEntries } from "./annotator-entries";
 import { useAnnotator } from "./annotator-context";
+import { useMaskGenerator } from "./_hooks/use-mask-generator";
 
 const imageFrameVariants = cva("relative bg-cover bg-center bg-no-repeat", {
   variants: {
@@ -40,6 +41,36 @@ const imageFrameVariants = cva("relative bg-cover bg-center bg-no-repeat", {
   },
 });
 
+// Função para gerar máscara SVG baseada nas entradas
+const generateMaskSVG = (
+  entries: any[],
+  width: number,
+  height: number
+): string => {
+  if (!entries.length) return "";
+
+  // Criar retângulos para cada entrada
+  const rects = entries
+    .map((entry) => {
+      const { left, top, width: w, height: h } = entry;
+      return `<rect x="${left}" y="${top}" width="${w}" height="${h}" fill="white"/>`;
+    })
+    .join("");
+
+  // SVG com fundo preto (área escurecida) e retângulos brancos (áreas de brilho original)
+  return `data:image/svg+xml;base64,${btoa(`
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <mask id="brightness-mask">
+          <rect width="100%" height="100%" fill="black"/>
+          ${rects}
+        </mask>
+      </defs>
+      <rect width="100%" height="100%" fill="white" mask="url(#brightness-mask)"/>
+    </svg>
+  `)}`;
+};
+
 function AnnotatorContent({
   url,
   borderWidth = ANNOTATOR_CONSTANTS.DEFAULT_BORDER_WIDTH,
@@ -47,6 +78,7 @@ function AnnotatorContent({
   labels,
   onChange,
   status: initialStatus,
+  maxSelections,
   className,
   ref,
   ...props
@@ -64,6 +96,8 @@ function AnnotatorContent({
 
   const {
     entries,
+    totalSelections,
+    canAddSelection,
     createAndAddEntry,
     removeEntry,
     resetEntries,
@@ -104,6 +138,8 @@ function AnnotatorContent({
 
   const mouseDownHandler = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!canAddSelection) return;
+
       if (
         (status === "free" || status === "input") &&
         e.button !== ANNOTATOR_CONSTANTS.MOUSE_BUTTON_RIGHT
@@ -114,7 +150,7 @@ function AnnotatorContent({
         setStatus("hold");
       }
     },
-    [status, crop]
+    [status, crop, canAddSelection]
   );
 
   const onMouseUp = useCallback(
@@ -159,6 +195,9 @@ function AnnotatorContent({
     [offset, pointer]
   );
 
+  // Gerar máscara SVG usando as dimensões da imagem e as entradas existentes
+  const maskImage = useMaskGenerator(entries, imageFrameStyle?.width, imageFrameStyle?.height);
+
   return (
     <div
       className={cn(
@@ -166,7 +205,7 @@ function AnnotatorContent({
           status,
           borderWidth,
         }),
-        "relative flex items-center justify-center"
+        "flex items-center justify-center"
       )}
       style={{
         width: `${annotatorStyle?.width || 800}px`,
@@ -182,19 +221,16 @@ function AnnotatorContent({
           width: `${imageFrameStyle?.width}px`,
           height: `${imageFrameStyle?.height}px`,
           backgroundImage: `url(${imageFrameStyle?.backgroundImageSrc})`,
+          // Aplicar máscara apenas quando há entradas
+          ...(maskImage && {
+            maskImage: maskImage,
+            WebkitMaskImage: maskImage,
+            filter: "brightness(0.3)",
+          }),
         }}
       >
         {(status === "hold" || status === "input") && (
-          <AnnotatorSelector
-            rectangle={rect}
-            isSelecting={status === "hold"}
-            // onSelect={(data) => {
-            //   console.log("Seleção iniciada:", data.id, data);
-            // }}
-            // onSelectEnd={(data) => {
-            //   console.log("Seleção finalizada:", data.id, data);
-            // }}
-          />
+          <AnnotatorSelector rectangle={rect} isSelecting={status === "hold"} />
         )}
 
         {status === "input" && rect && (
@@ -215,6 +251,12 @@ function AnnotatorContent({
           onHover={updateEntryHover}
         />
       </div>
+
+      {maxSelections && !canAddSelection && (
+        <div className="absolute -top-12 left-0 bg-input/80 cursor-auto select-none border text-foreground px-2 py-1 rounded text-sm">
+          Limite de seleções atingido ({totalSelections}/{maxSelections})
+        </div>
+      )}
     </div>
   );
 }

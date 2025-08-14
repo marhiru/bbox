@@ -1,4 +1,4 @@
-import { JSX, RefObject, useEffect, useRef } from "react";
+import { JSX, RefObject, useEffect, useMemo, useRef } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useAnnotator, type SelectionData } from "./annotator-context";
@@ -36,12 +36,14 @@ export function AnnotatorSelector({
   onSelectEnd,
   isSelecting = false,
 }: AnnotatorSelectorProps & AnnotatorSelectorVariants): JSX.Element {
-  const { addSelection, updateSelection, totalSelections } = useAnnotator();
+  const { addSelection, updateSelection, totalSelections, canAddSelection, maxSelections } = useAnnotator();
   const selectTrigger: RefObject<boolean> = useRef(false);
   const selectTriggerEnd: RefObject<boolean> = useRef(false);
 
   useEffect(() => {
     if (isSelecting && !selectTrigger.current) {
+      if (!canAddSelection) return;
+
       selectTrigger.current = true;
       selectTriggerEnd.current = false;
 
@@ -55,7 +57,7 @@ export function AnnotatorSelector({
       addSelection(data);
       onSelect?.(data);
     }
-  }, [isSelecting, totalSelections, addSelection, onSelect, rectangle]);
+  }, [isSelecting, totalSelections, addSelection, onSelect, rectangle, canAddSelection]);
 
   useEffect(() => {
     if (!isSelecting && !selectTriggerEnd.current) {
@@ -78,10 +80,17 @@ export function AnnotatorSelector({
     }
   }, [isSelecting, totalSelections, updateSelection, onSelectEnd, rectangle]);
 
+  const selectorVariant = useMemo(() => {
+    if (maxSelections && !canAddSelection) {
+      return "warning";
+    }
+    return variant;
+  }, [variant, maxSelections, canAddSelection]);
+
   return (
     <div
       className={cn(
-        annotatorSelectorVariants({ borderWidth, variant }),
+        annotatorSelectorVariants({ borderWidth, variant: selectorVariant }),
         "pointer-events-none"
       )}
       style={{
