@@ -17,7 +17,7 @@ export default function Home() {
       <main className="flex flex-1 gap-8 row-start-2 items-center sm:items-start">
         <Annotator
           url="https://avatars.githubusercontent.com/u/66804488?v=4"
-          inputMethod="select"
+          inputMethod="none"
           labels={labels}
           className="border"
           onChange={handleEntriesChange}
