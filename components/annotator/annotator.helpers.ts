@@ -1,4 +1,3 @@
-// Tipos principais
 export type EntryType = {
   left: number;
   top: number;
@@ -17,12 +16,10 @@ export type AnnotatorStatus = "free" | "input" | "hold";
 export type Pointer = { x: number; y: number } | null;
 export type Offset = { x: number; y: number } | null;
 
-// Função para gerar IDs únicos (sem dependência externa)
 export const generateId = (): string => {
   return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 };
 
-// Função para calcular retângulo baseado em offset e pointer
 export const calculateRectangle = (offset: Offset, pointer: Pointer) => {
   if (!offset || !pointer) {
     return { left: 0, top: 0, width: 0, height: 0 };
@@ -41,7 +38,6 @@ export const calculateRectangle = (offset: Offset, pointer: Pointer) => {
   };
 };
 
-// Função para crop das coordenadas
 export const cropCoordinates = (
   pageX: number,
   pageY: number,
@@ -68,14 +64,11 @@ export const cropCoordinates = (
   };
 };
 
-// Função para calcular dimensões da imagem
 export const calculateImageDimensions = (
   imageWidth: number,
   imageHeight: number,
   maxWidth: number
 ) => {
-  // If image is wider than container, scale it down
-  // If image is smaller than container, keep original size
   if (imageWidth > maxWidth) {
     const multiplier = imageWidth / maxWidth;
     return {
@@ -84,7 +77,6 @@ export const calculateImageDimensions = (
       displayHeight: imageHeight / multiplier,
     };
   } else {
-    // Image fits in container, keep original size
     return {
       multiplier: 1,
       displayWidth: imageWidth,
@@ -93,7 +85,6 @@ export const calculateImageDimensions = (
   }
 };
 
-// Função para processar entradas para onChange
 export const processEntriesForChange = (
   entries: EntryWithMeta[],
   multiplier: number
@@ -107,7 +98,6 @@ export const processEntriesForChange = (
   }));
 };
 
-// Função para criar nova entrada
 export const createNewEntry = (
   rect: ReturnType<typeof calculateRectangle>,
   label: string
@@ -120,7 +110,6 @@ export const createNewEntry = (
   };
 };
 
-// Função para atualizar showCloseButton de uma entrada
 export const updateEntryHoverState = (
   entries: EntryWithMeta[],
   id: string,
@@ -131,7 +120,6 @@ export const updateEntryHoverState = (
   );
 };
 
-// Função para remover entrada por ID
 export const removeEntryById = (
   entries: EntryWithMeta[],
   id: string
@@ -139,17 +127,14 @@ export const removeEntryById = (
   return entries.filter((entry) => entry.id !== id);
 };
 
-// Função para validar status inicial
 export const validateInitialStatus = (
   status: AnnotatorStatus | null | undefined
 ): AnnotatorStatus => {
   return status || "free";
 };
 
-// Constantes
 export const ANNOTATOR_CONSTANTS = {
   DEFAULT_BORDER_WIDTH: 2,
   DEFAULT_STATUS: "free" as const,
   MOUSE_BUTTON_RIGHT: 2,
 } as const;
-  
