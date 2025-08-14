@@ -21,7 +21,7 @@ export function ThemeSwitcher(): JSX.Element {
   };
 
   return (
-    <Button variant="outline" className="px-8 h-7" onClick={() => handleThemeSwitch(theme)}>
+    <Button variant="outline" className="px-8 h-7 ring-0 hover:ring-2 ring-primary" onClick={() => handleThemeSwitch(theme)}>
       <Sun className="hidden dark:flex" />
       <Moon className="dark:hidden block" />
     </Button>
